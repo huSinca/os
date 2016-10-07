@@ -13,12 +13,14 @@ void barber();
 void customerGenerator();
 void waitingRoom();
 
+//global flags
+int barberFlag, waitingCount;
+
 
 void main(void)
 {   
-    int barberFlag, waitingFlag;
     barberFlag = 0;
-    waitingFlag = 0;
+    waitingCount = 0;
     pid_t pid; int test;
     printf("Generating a Process..\n");
     switch(pid = fork()){
@@ -43,7 +45,7 @@ void main(void)
                     waitingRoom();
                 default:
                     sleep(2); // so the output would make sense.
-                    if(test == getpid()){
+                    if(test == getpid()){ // test variable holds the id of the parent.
                         printf("Parent process #%d is acting as customerGenerator.\n", getpid());
                         customerGenerator();
                     }
@@ -54,19 +56,67 @@ void main(void)
 }
 
 void barber(){
-    printf("Barber Process #%d: ready to accept Customers.\n", getpid());
+    if(barberFlag==0){
+        barberFlag = 1;
+        
+        printf("Customer #%d: getting haircut.\n", getpid());
+        
+        sleep(1);
     
+        
+    }
+    barberFlag = 0;
+    printf("Customer #%d: done\n", getpid());
+
 }
 
 void customerGenerator(){
-
-         printf("Customer Generator Process #%d: ready to create Customers.\n", getpid());
-    
+    printf("Customer Generator Process #%d: ready to create Customers.\n", getpid());
+         /* fork child processes */
+    pid_t pid;
+    for (int i = 0; i < 5; i++){
+        pid = fork ();
+        if (pid < 0)              /* check for error      */
+            printf ("Fork error.\n");
+        else if (pid == 0)
+            break;                  /* child processes */
+    }
+    //******************   PARENT PROCESS   ****************/
+    if(pid!=0){
+        // wait for all children to exit)
+        while(pid=waitpid(-1, NULL, 0)){
+            if(errno == ECHILD)
+                break;
+        }
+        printf("\nParent: All children have finished.\n");
+        
+        
+    }else{ //******************   CHILD PROCESS   *****************/
+        while(1){
+            if(waitingCount < 3){
+               waitingRoom(); // goes to waiting room then waiting room sends the process to barber.
+               break;
+            }
+            sleep(0.5);
+        }
+        
+    }
     
 }
 
 void waitingRoom(){
-    printf("WaitingRoom Process #%d: ready to accept Customers.\n", getpid());
+    if(waitingCount < 3){
+        waitingCount++; // incrementing how many process is entered.
+        printf("Customer #%d: is in waiting room.\n", getpid());
+        while(1){
+            if(barberFlag == 0){
+                waitingCount--; 
+                barber();
+                break;
+            }
+            sleep(0.5);
+        }
+    }
     
 }
 
